@@ -1,0 +1,21 @@
+{
+  "name": "shizuka-bot",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "axios": "^1.12.2",
+    "cyber-fca": "^2.0.0",
+    "express": "^5.1.0",
+    "fs-extra": "^11.3.2",
+    "moment-timezone": "^0.6.0",
+    "node-schedule": "^2.1.1"
+  }
+}
