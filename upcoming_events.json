@@ -1,25 +1,5 @@
 [
   {
-    "date": "2025-10-24",
-    "name": "United Nations Day",
-    "type": "International"
-  },
-  {
-    "date": "2025-10-24",
-    "name": "World Development Information Day",
-    "type": "International"
-  },
-  {
-    "date": "2025-10-24",
-    "name": "Diwali / Deepavali",
-    "type": "Religious"
-  },
-  {
-    "date": "2025-10-24",
-    "name": "Black Cat Day",
-    "type": "Awareness"
-  },
-  {
     "date": "2025-10-25",
     "name": "International Artists Day",
     "type": "International"
@@ -28,6 +8,16 @@
     "date": "2025-10-25",
     "name": "World Pasta Day",
     "type": "Awareness"
+  },
+  {
+    "date": "2025-10-25",
+    "name": "International Artist's Day",
+    "type": "International"
+  },
+  {
+    "date": "2025-10-25",
+    "name": "International Artists' Day",
+    "type": "International"
   },
   {
     "date": "2025-10-26",
@@ -40,6 +30,11 @@
     "type": "International"
   },
   {
+    "date": "2025-10-27",
+    "name": "New Moon",
+    "type": "Astronomical"
+  },
+  {
     "date": "2025-10-28",
     "name": "International Animation Day",
     "type": "International"
@@ -48,6 +43,21 @@
     "date": "2025-10-28",
     "name": "International Creole Day",
     "type": "International"
+  },
+  {
+    "date": "2025-10-28",
+    "name": "Chhath Puja (Kharna)",
+    "type": "Religious"
+  },
+  {
+    "date": "2025-10-28",
+    "name": "Chhath Puja (Nahay Khay)",
+    "type": "Religious"
+  },
+  {
+    "date": "2025-10-28",
+    "name": "First Quarter Moon",
+    "type": "Astronomical"
   },
   {
     "date": "2025-10-29",
@@ -70,8 +80,83 @@
     "type": "Awareness"
   },
   {
+    "date": "2025-10-29",
+    "name": "Chhath Puja (Sandhya Arghya)",
+    "type": "Religious"
+  },
+  {
+    "date": "2025-10-29",
+    "name": "Kali Puja",
+    "type": "Religious/National"
+  },
+  {
+    "date": "2025-10-29",
+    "name": "Diwali / Deepavali",
+    "type": "Religious"
+  },
+  {
+    "date": "2025-10-29",
+    "name": "New Moon",
+    "type": "Astronomical"
+  },
+  {
+    "date": "2025-10-29",
+    "name": "Chhath Puja (Lohanda and Kharna)",
+    "type": "Religious"
+  },
+  {
     "date": "2025-10-30",
     "name": "World Cities Day",
+    "type": "International"
+  },
+  {
+    "date": "2025-10-30",
+    "name": "World Thrift Day",
+    "type": "International"
+  },
+  {
+    "date": "2025-10-30",
+    "name": "Chhath Puja (Usha Arghya & Paran)",
+    "type": "Religious"
+  },
+  {
+    "date": "2025-10-30",
+    "name": "Chhath Puja (Sandhya Arghya)",
+    "type": "Religious"
+  },
+  {
+    "date": "2025-10-30",
+    "name": "World Thrift Day (International Savings Day)",
+    "type": "International"
+  },
+  {
+    "date": "2025-10-31",
+    "name": "Chhath Puja (Usha Arghya and Paran)",
+    "type": "Religious"
+  },
+  {
+    "date": "2025-10-31",
+    "name": "New Moon",
+    "type": "Astronomical"
+  },
+  {
+    "date": "2025-10-31",
+    "name": "Halloween",
+    "type": "Cultural"
+  },
+  {
+    "date": "2025-10-31",
+    "name": "World Cities Day",
+    "type": "International"
+  },
+  {
+    "date": "2025-10-31",
+    "name": "Reformation Day",
+    "type": "Religious"
+  },
+  {
+    "date": "2025-10-31",
+    "name": "World Savings Day",
     "type": "International"
   }
 ]

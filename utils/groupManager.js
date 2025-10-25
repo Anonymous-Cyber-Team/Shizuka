@@ -1,14 +1,13 @@
-// utils/groupManager.js (v2.5.1 - Robust Status Update & Save - সম্পূর্ণ কোড)
+// utils/groupManager.js (v2.7 - Added handleNewGroupInteraction & isGroupPending)
 
 const fs = require("fs-extra");
 const path = require("path");
-const groupsFilePath = path.join(__dirname, "..", "groups.json"); // প্রজেক্ট রুটে groups.json
+const groupsFilePath = path.join(__dirname, "..", "groups.json");
 
 // --- ডেটা লোড এবং সেভ ---
 function loadGroups() {
   try {
     if (!fs.existsSync(groupsFilePath)) {
-      // স্ট্যাটাস সহ ডিফল্ট স্ট্রাকচার
       fs.writeJsonSync(
         groupsFilePath,
         { pending: [], approved: [] },
@@ -20,7 +19,6 @@ function loadGroups() {
       return { pending: [], approved: [] };
     }
     const fileContent = fs.readFileSync(groupsFilePath, "utf8");
-    // Handle empty or corrupted file
     let data;
     try {
       data = JSON.parse(
@@ -35,17 +33,13 @@ function loadGroups() {
       data = { pending: [], approved: [] };
       fs.writeJsonSync(groupsFilePath, data, { spaces: 2 });
     }
-
-    // Ensure structure and add default status
-    // Ensure approved is always an array before mapping
     data.approved = Array.isArray(data.approved)
       ? data.approved.map((group) => ({
           ...group,
           status: group.status || "active",
         }))
       : [];
-    data.pending = Array.isArray(data.pending) ? data.pending : []; // Ensure pending is array
-    // console.log("[GroupManager Load] groups.json লোড সম্পন্ন।"); // সফল লোড লগ
+    data.pending = Array.isArray(data.pending) ? data.pending : [];
     return data;
   } catch (error) {
     console.error(
@@ -65,7 +59,6 @@ function loadGroups() {
 
 function saveGroups(data) {
   try {
-    // Ensure structure before saving
     if (
       !data ||
       !Array.isArray(data.pending) ||
@@ -74,28 +67,21 @@ function saveGroups(data) {
       console.error(
         "[GroupManager Save Error] সেভ করার জন্য ডেটার গঠন সঠিক নয়!"
       );
-      // Attempt to create a minimal valid structure if possible
       data = {
         pending: Array.isArray(data?.pending) ? data.pending : [],
         approved: Array.isArray(data?.approved)
           ? data.approved.map((g) => ({ ...g, status: g.status || "active" }))
-          : [], // Ensure status on save too
+          : [],
       };
       console.warn("[GroupManager Save] ডেটার গঠন ঠিক করা হয়েছে।");
     } else {
-      // Ensure status property exists on all approved groups before saving
       data.approved = data.approved.map((group) => ({
         ...group,
         status: group.status || "active",
       }));
     }
     fs.writeJsonSync(groupsFilePath, data, { spaces: 2 });
-    console.log(
-      "[GroupManager Save] groups.json ফাইল সফলভাবে সেভ হয়েছে। Approved:",
-      data.approved.length,
-      "Pending:",
-      data.pending.length
-    ); // সেভ কনফার্মেশন লগ
+    // console.log("[GroupManager Save] groups.json ফাইল সফলভাবে সেভ হয়েছে।"); // লগ কমানো হলো
   } catch (error) {
     console.error(
       "[GroupManager Save Error] groups.json সেভ করতে সমস্যা:",
@@ -106,11 +92,8 @@ function saveGroups(data) {
 
 // --- গ্রুপ ম্যানেজমেন্ট ফাংশন ---
 
-// নতুন গ্রুপ পেন্ডিং লিস্টে যোগ করা
+// নতুন গ্রুপ পেন্ডিং লিস্টে যোগ করা (log:subscribe থেকে ব্যবহৃত)
 async function addPendingGroup(api, threadID, adderUserID) {
-  console.log(
-    `[AddPending] ফাংশন কল। Thread ID: ${threadID}, Adder: ${adderUserID}`
-  );
   let groups;
   try {
     groups = loadGroups();
@@ -118,46 +101,38 @@ async function addPendingGroup(api, threadID, adderUserID) {
     console.error("[AddPending] groups.json লোড করতে সমস্যা:", loadErr);
     return false;
   }
-
   const isPending = groups.pending.some((g) => g.id === threadID);
   const isApproved = groups.approved.some((g) => g.id === threadID);
-  console.log(
-    `[AddPending] গ্রুপ ${threadID} চেক: Pending=${isPending}, Approved=${isApproved}`
-  );
   if (isPending || isApproved) {
-    console.log(`[GroupManager] গ্রুপ ${threadID} আগে থেকেই লিস্টে আছে.`);
+    console.log(
+      `[GroupManager] গ্রুপ ${threadID} আগে থেকেই লিস্টে আছে (addPendingGroup)।`
+    );
     return false;
   }
 
   let groupName = `Unknown Group (${threadID})`;
   let adderName = `Unknown Adder (${adderUserID || "N/A"})`;
   try {
-    console.log(`[AddPending] গ্রুপ ${threadID} ইনফো আনা হচ্ছে...`);
     const threadInfo = await api.getThreadInfo(threadID);
-    if (threadInfo?.[threadID]?.name) {
-      groupName = threadInfo[threadID].name;
-    } else if (threadInfo?.name) {
+    if (threadInfo?.name) {
       groupName = threadInfo.name;
     }
-    console.log(`[AddPending] গ্রুপ নাম: ${groupName}`);
   } catch (err) {
     console.error(
-      `[GroupManager] গ্রুপ ${threadID} নাম আনতে সমস্যা:`,
+      `[GroupManager] গ্রুপ ${threadID} নাম আনতে সমস্যা (addPendingGroup):`,
       err.errorDescription || err
     );
   }
   try {
     if (adderUserID) {
-      console.log(`[AddPending] ইউজার ${adderUserID} ইনফো আনা হচ্ছে...`);
       const adderInfo = await api.getUserInfo([adderUserID]);
       if (adderInfo?.[adderUserID]?.name) {
         adderName = adderInfo[adderUserID].name;
-        console.log(`[AddPending] অ্যাডার নাম: ${adderName}`);
       }
     }
   } catch (err) {
     console.error(
-      `[GroupManager] ইউজার ${adderUserID} নাম আনতে সমস্যা:`,
+      `[GroupManager] ইউজার ${adderUserID} নাম আনতে সমস্যা (addPendingGroup):`,
       err.errorDescription || err
     );
   }
@@ -172,20 +147,95 @@ async function addPendingGroup(api, threadID, adderUserID) {
   try {
     saveGroups(groups);
     console.log(
-      `[GroupManager] নতুন গ্রুপ পেন্ডিং: ${groupName} (ID: ${threadID})`
+      `[GroupManager] নতুন গ্রুপ পেন্ডিং (log:subscribe): ${groupName} (ID: ${threadID})`
     );
     return true;
   } catch (saveError) {
-    console.error("[GroupManager] Pending গ্রুপ সেভে সমস্যা:", saveError);
+    console.error(
+      "[GroupManager] Pending গ্রুপ সেভে সমস্যা (addPendingGroup):",
+      saveError
+    );
     return false;
   }
 }
 
-// অ্যাডমিন অ্যাড করলে অটো অ্যাপ্রুভ
+// <<< নতুন ফাংশন: প্রথম মেসেজ থেকে গ্রুপ হ্যান্ডেল করা >>>
+async function handleNewGroupInteraction(api, threadID, config) {
+  let groups;
+  try {
+    groups = loadGroups();
+  } catch (loadErr) {
+    console.error("[handleNewGroup] groups.json লোড করতে সমস্যা:", loadErr);
+    return false; // Indicate failure
+  }
+
+  const isPending = groups.pending.some((g) => g.id === threadID);
+  const isApproved = groups.approved.some((g) => g.id === threadID);
+
+  // যদি কোনোভাবে আগে থেকেই লিস্টে থাকে, তাহলে কিছু করার দরকার নেই
+  if (isPending || isApproved) {
+    console.log(
+      `[handleNewGroup] গ্রুপ ${threadID} আগে থেকেই লিস্টে আছে, ইগনোর করা হচ্ছে।`
+    );
+    return false; // Indicate already handled or listed
+  }
+
+  // গ্রুপের নাম আনার চেষ্টা
+  let groupName = `Unknown Group (${threadID})`;
+  try {
+    const threadInfo = await api.getThreadInfo(threadID);
+    if (threadInfo?.name) {
+      // Use threadInfo.name directly if available
+      groupName = threadInfo.name;
+    }
+    console.log(`[handleNewGroup] গ্রুপ নাম পাওয়া গেছে: ${groupName}`);
+  } catch (err) {
+    console.error(
+      `[handleNewGroup] গ্রুপ ${threadID} নাম আনতে সমস্যা:`,
+      err.errorDescription || err
+    );
+  }
+
+  // নতুন পেন্ডিং এন্ট্রি তৈরি (অ্যাডার অজানা)
+  const newEntry = {
+    id: threadID,
+    name: groupName,
+    requested_by_id: "Unknown (Detected)", // যেহেতু কে অ্যাড করেছে জানা নেই
+    requested_by_name: "First Message",
+  };
+
+  groups.pending.push(newEntry);
+
+  try {
+    saveGroups(groups);
+    console.log(
+      `[handleNewGroup] নতুন গ্রুপ পেন্ডিং লিস্টে যোগ করা হয়েছে: ${groupName} (ID: ${threadID})`
+    );
+
+    // অ্যাডমিনদের নোটিফিকেশন পাঠানো
+    const notifyMsg = `🔔 নতুন গ্রুপ সনাক্ত (পেন্ডিং) 🔔\n\nগ্রুপ: ${groupName}\nID: ${threadID}\n(গ্রুপ থেকে প্রথম মেসেজ পাওয়ায় যুক্ত করা হয়েছে)\n\nদয়া করে "@group list" বা "@group approveid ${threadID}" ব্যবহার করে অ্যাপ্রুভ করুন।`;
+
+    if (Array.isArray(config?.ADMIN_IDS)) {
+      config.ADMIN_IDS.forEach((adminId) => {
+        api.sendMessage(notifyMsg, adminId, (err) => {
+          if (err)
+            console.error(
+              `[Group Notify Error - handleNewGroup] অ্যাডমিন ${adminId}-কে জানাতে সমস্যা:`,
+              err
+            );
+        });
+      });
+    }
+    return true; // Indicate success
+  } catch (saveError) {
+    console.error("[handleNewGroup] পেন্ডিং গ্রুপ সেভে সমস্যা:", saveError);
+    return false; // Indicate failure
+  }
+}
+// <<< নতুন ফাংশন শেষ >>>
+
+// অ্যাডমিন অ্যাড করলে অটো অ্যাপ্রুভ (log:subscribe থেকে ব্যবহৃত)
 async function autoApproveGroup(api, threadID, adminUserID) {
-  console.log(
-    `[AutoApprove] কল হয়েছে। Thread ID: ${threadID}, Admin: ${adminUserID}`
-  );
   let groups;
   try {
     groups = loadGroups();
@@ -193,9 +243,10 @@ async function autoApproveGroup(api, threadID, adminUserID) {
     return false;
   }
   const isApproved = groups.approved.some((g) => g.id === threadID);
-  console.log(`[AutoApprove] গ্রুপ ${threadID} চেক: Approved=${isApproved}`);
   if (isApproved) {
-    console.log(`[GroupManager] গ্রুপ ${threadID} আগে থেকেই অ্যাপ্রুভড।`);
+    console.log(
+      `[GroupManager] গ্রুপ ${threadID} আগে থেকেই অ্যাপ্রুভড (autoApprove)।`
+    );
     groups.pending = groups.pending.filter((g) => g.id !== threadID);
     saveGroups(groups);
     return false;
@@ -204,11 +255,17 @@ async function autoApproveGroup(api, threadID, adminUserID) {
   let groupName = `Unknown Group (${threadID})`;
   let adminName = `Admin (${adminUserID})`;
   try {
-    /* ... নাম আনা ... */
-  } catch {}
+    const threadInfo = await api.getThreadInfo(threadID);
+    if (threadInfo?.name) {
+      groupName = threadInfo.name;
+    }
+  } catch (err) {}
   try {
-    /* ... নাম আনা ... */
-  } catch {}
+    const adderInfo = await api.getUserInfo([adminUserID]);
+    if (adderInfo?.[adminUserID]?.name) {
+      adminName = adderInfo[adminUserID].name;
+    }
+  } catch (err) {}
 
   const newEntry = {
     id: threadID,
@@ -216,13 +273,13 @@ async function autoApproveGroup(api, threadID, adminUserID) {
     requested_by_id: adminUserID,
     requested_by_name: adminName,
     status: "active",
-  }; // <-- স্ট্যাটাস অ্যাক্টিভ
+  };
   groups.pending = groups.pending.filter((g) => g.id !== threadID);
   groups.approved.push(newEntry);
   try {
     saveGroups(groups);
     console.log(
-      `[GroupManager] অটো-অ্যাপ্রুভ হয়েছে: ${groupName} (ID: ${threadID})`
+      `[GroupManager] অটো-অ্যাপ্রুভ হয়েছে (log:subscribe): ${groupName} (ID: ${threadID})`
     );
     return true;
   } catch (saveError) {
@@ -231,7 +288,65 @@ async function autoApproveGroup(api, threadID, adminUserID) {
   }
 }
 
-// গ্রুপ অ্যাপ্রুভ করা
+// আইডি দিয়ে সরাসরি অ্যাপ্রুভ (কমান্ড থেকে ব্যবহৃত)
+async function forceApproveGroup(api, threadID) {
+  let groups;
+  try {
+    groups = loadGroups();
+  } catch {
+    return { success: false, message: "গ্রুপ ডেটা লোড করা যায়নি।" };
+  }
+  const isApproved = groups.approved.some((g) => g.id === threadID);
+  if (isApproved) {
+    console.log(
+      `[GroupManager] গ্রুপ ${threadID} আগে থেকেই অ্যাপ্রুভড (forceApprove)।`
+    );
+    groups.pending = groups.pending.filter((g) => g.id !== threadID);
+    saveGroups(groups);
+    return {
+      success: true,
+      message: `ℹ️ গ্রুপ ${threadID} আগে থেকেই অ্যাপ্রুভড।`,
+    };
+  }
+
+  let groupName = `Unknown Group (${threadID})`;
+  try {
+    const threadInfo = await api.getThreadInfo(threadID);
+    if (threadInfo?.name) {
+      groupName = threadInfo.name;
+    }
+  } catch (err) {
+    console.error(
+      `[GroupManager] গ্রুপ ${threadID} নাম আনতে সমস্যা (forceApprove):`,
+      err.errorDescription || err
+    );
+  }
+
+  const newEntry = {
+    id: threadID,
+    name: groupName,
+    requested_by_id: "Forced (Admin)",
+    requested_by_name: "Admin Command",
+    status: "active",
+  };
+  groups.pending = groups.pending.filter((g) => g.id !== threadID);
+  groups.approved.push(newEntry);
+  try {
+    saveGroups(groups);
+    console.log(
+      `[GroupManager] ফোর্স-অ্যাপ্রুভ হয়েছে: ${groupName} (ID: ${threadID})`
+    );
+    return {
+      success: true,
+      message: `✅ গ্রুপ "${groupName}" (ID: ${threadID}) সরাসরি অ্যাপ্রুভ করা হয়েছে।`,
+    };
+  } catch (saveError) {
+    console.error("[GroupManager] ForceApprove সেভে সমস্যা:", saveError);
+    return { success: false, message: "গ্রুপ সেভ করতে সমস্যা হয়েছে।" };
+  }
+}
+
+// পেন্ডিং লিস্ট থেকে অ্যাপ্রুভ করা (কমান্ড থেকে ব্যবহৃত)
 function approveGroupByCriteria(criteria) {
   const groups = loadGroups();
   let groupIndex = -1;
@@ -272,7 +387,7 @@ function approveGroupByCriteria(criteria) {
   }
 }
 
-// গ্রুপ রিজেক্ট করা
+// পেন্ডিং লিস্ট থেকে রিজেক্ট করা (কমান্ড থেকে ব্যবহৃত)
 function rejectGroupByCriteria(criteria) {
   const groups = loadGroups();
   let groupIndex = -1;
@@ -304,7 +419,7 @@ function rejectGroupByCriteria(criteria) {
   };
 }
 
-// সব পেন্ডিং গ্রুপ রিজেক্ট করা
+// সব পেন্ডিং গ্রুপ রিজেক্ট করা (কমান্ড থেকে ব্যবহৃত)
 function rejectAllPending() {
   const groups = loadGroups();
   const rejectedCount = groups.pending.length;
@@ -319,7 +434,7 @@ function rejectAllPending() {
   };
 }
 
-// অ্যাপ্রুভড গ্রুপ রিমুভ করা
+// অ্যাপ্রুভড গ্রুপ রিমুভ করা (কমান্ড থেকে ব্যবহৃত)
 function removeApprovedGroup(criteria) {
   const groups = loadGroups();
   let groupIndex = -1;
@@ -353,43 +468,32 @@ function removeApprovedGroup(criteria) {
   };
 }
 
-// *** গ্রুপের স্ট্যাটাস আপডেট করা (v2.5.1 - চূড়ান্ত ফিক্স) ***
+// গ্রুপের স্ট্যাটাস আপডেট করা (কমান্ড থেকে ব্যবহৃত)
 function updateGroupStatus(threadID, newStatus) {
-  // Validate the new status
   if (newStatus !== "active" && newStatus !== "inactive") {
     return {
       success: false,
       message: "অবৈধ স্ট্যাটাস। 'active' বা 'inactive' ব্যবহার করুন।",
     };
   }
-
   let groups;
   try {
-    groups = loadGroups(); // Load fresh data first
+    groups = loadGroups();
   } catch (loadErr) {
     console.error("[UpdateStatus] groups.json লোড করতে সমস্যা:", loadErr);
     return { success: false, message: "গ্রুপ ডেটা লোড করা যায়নি।" };
   }
-
   const groupIndex = groups.approved.findIndex((g) => g.id === threadID);
-
   if (groupIndex === -1) {
     return {
       success: false,
       message: `গ্রুপ আইডি ${threadID} অ্যাপ্রুভড লিস্টে নেই।`,
     };
   }
-
   const groupToUpdate = groups.approved[groupIndex];
-  // Use || 'active' as a fallback if status is missing somehow
   const oldStatus = groupToUpdate.status || "active";
-  const groupName = groupToUpdate.name || `Group (${threadID})`; // Fallback name
-
-  // যদি স্ট্যাটাস ইতিমধ্যেই একই থাকে
+  const groupName = groupToUpdate.name || `Group (${threadID})`;
   if (oldStatus === newStatus) {
-    console.log(
-      `[GroupManager Debug] গ্রুপ ${threadID} ইতিমধ্যেই "${newStatus}" আছে।`
-    );
     return {
       success: true,
       message: `"${groupName}" (${threadID}) গ্রুপটি ইতিমধ্যেই ${
@@ -397,27 +501,15 @@ function updateGroupStatus(threadID, newStatus) {
       } আছে।`,
     };
   }
-
-  // স্ট্যাটাস আপডেট করা হচ্ছে মেমরিতে
-  console.log(
-    `[GroupManager Debug] আপডেট করা হচ্ছে: ${threadID} | পুরনো স্ট্যাটাস: ${oldStatus} | নতুন স্ট্যাটাস: ${newStatus}`
-  );
-  // Create a new object for the updated group to ensure immutability somewhat
   groups.approved[groupIndex] = { ...groupToUpdate, status: newStatus };
-
-  // আপডেট করা ডেটা ফাইলে সেভ করার চেষ্টা
   try {
-    saveGroups(groups); // Save the entire modified 'groups' object
-
-    // Verify save by reloading (optional but good practice)
-    const reloadedGroups = loadGroups();
+    saveGroups(groups);
+    const reloadedGroups = loadGroups(); // Verify save
     const updatedGroup = reloadedGroups.approved.find((g) => g.id === threadID);
-
     if (updatedGroup && updatedGroup.status === newStatus) {
       console.log(
-        `[GroupManager Success] গ্রুপ "${groupName}" (${threadID}) এর স্ট্যাটাস "${newStatus}" করা হয়েছে ও সেভ ভেরিফাইড।`
+        `[GroupManager Success] গ্রুপ "${groupName}" (${threadID}) এর স্ট্যাটাস "${newStatus}" করা হয়েছে।`
       );
-      // সেভ সফল হওয়ার পর *নতুন স্ট্যাটাস* অনুযায়ী বার্তা তৈরি করে রিটার্ন করা
       return {
         success: true,
         message: `"${groupName}" (${threadID}) গ্রুপটি এখন ${
@@ -426,9 +518,8 @@ function updateGroupStatus(threadID, newStatus) {
       };
     } else {
       console.error(
-        `[GroupManager Error] স্ট্যাটাস আপডেট সেভ হওয়ার পর ভেরিফাই করা যায়নি! ফাইল চেক করুন। Reloaded status: ${updatedGroup?.status}`
+        `[GroupManager Error] স্ট্যাটাস আপডেট সেভ ভেরিফাই করা যায়নি! Reloaded: ${updatedGroup?.status}`
       );
-      // Even if verification fails, the save *might* have worked, inform admin based on attempt
       return {
         success: false,
         message: `স্ট্যাটাস "${newStatus}" করার চেষ্টা করা হয়েছে, কিন্তু সেভ ভেরিফাই করা যায়নি।`,
@@ -436,7 +527,7 @@ function updateGroupStatus(threadID, newStatus) {
     }
   } catch (saveError) {
     console.error(
-      "[GroupManager Save Error] স্ট্যাটাস আপডেটের পর groups.json সেভ করতে সমস্যা:",
+      "[GroupManager Save Error] স্ট্যাটাস আপডেট সেভ করতে সমস্যা:",
       saveError
     );
     return {
@@ -464,17 +555,30 @@ function loadRawGroups() {
   return loadGroups();
 }
 
+// <<< নতুন: গ্রুপ পেন্ডিং লিস্টে আছে কিনা চেক করার ফাংশন >>>
+function isGroupPending(threadID) {
+  try {
+    return loadGroups().pending.some((g) => g.id === threadID);
+  } catch {
+    return false;
+  }
+}
+// <<< নতুন ফাংশন শেষ >>>
+
 module.exports = {
-  addPendingGroup,
-  autoApproveGroup,
-  approveGroupByCriteria,
-  rejectGroupByCriteria,
-  rejectAllPending,
-  removeApprovedGroup,
-  updateGroupStatus,
-  getPendingGroups,
-  getApprovedGroups,
-  isGroupApprovedAndActive,
-  isGroupApproved,
-  loadRawGroups,
+  addPendingGroup, // Used by log:subscribe (if it works)
+  autoApproveGroup, // Used by log:subscribe (if it works)
+  approveGroupByCriteria, // Used by @group approve command
+  rejectGroupByCriteria, // Used by @group reject command
+  rejectAllPending, // Used by @group rejectall command
+  removeApprovedGroup, // Used by @group remove command
+  updateGroupStatus, // Used by @on / @off commands
+  getPendingGroups, // Used by @group list command & logSubscribe notify
+  getApprovedGroups, // Used by @group approved command
+  isGroupApprovedAndActive, // Used by index.js for interaction check
+  isGroupApproved, // Used by index.js for command check
+  loadRawGroups, // Potentially useful elsewhere
+  forceApproveGroup, // Used by @group approveid command
+  handleNewGroupInteraction, // <<< নতুন ফাংশা��� এক্সপোর্ট (Used by index.js first message detection)
+  isGroupPending, // <<< নতুন ফাংশন এক্সপোর্ট (Used by index.js first message detection)
 };

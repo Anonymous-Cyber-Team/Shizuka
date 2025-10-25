@@ -1,4 +1,4 @@
-// commands/group.js
+// commands/group.js (v1.1 - Added 'approveid' command)
 
 const {
   getPendingGroups,
@@ -7,8 +7,8 @@ const {
   rejectAllPending,
   getApprovedGroups,
   removeApprovedGroup,
+  forceApproveGroup, // <--- নতুন ফাংশন ইম্পোর্ট
 } = require("../utils/groupManager");
-
 module.exports = {
   config: {
     name: "group",
@@ -18,7 +18,7 @@ module.exports = {
     permission: 1,
     cooldown: 3,
     usage:
-      "@group <list|approve|reject|rejectall|approved|remove> [id/name/index]", // <-- ফিক্সড
+      "@group <list|approve|reject|rejectall|approved|remove|approveid> [id/name/index]", // <-- 'approveid' যোগ করা হয়েছে
   },
   run: async function ({ api, message, args }) {
     const command = args[0]?.toLowerCase();
@@ -123,6 +123,27 @@ module.exports = {
           message.messageID
         );
         break;
+
+      // <--- নতুন ফিচার: 'approveid' কেস ---
+      case "approveid":
+        const threadIDToApprove = args[1];
+        if (!threadIDToApprove) {
+          return api.sendMessage(
+            "❓ ব্যবহার: @group approveid <গ্রুপের থ্রেড আইডি>",
+            message.threadID,
+            message.messageID
+          );
+        }
+        // groupManager থেকে নতুন ফাংশন কল
+        const forceResult = await forceApproveGroup(api, threadIDToApprove);
+        api.sendMessage(
+          forceResult.message,
+          message.threadID,
+          message.messageID
+        );
+        break;
+      // <--- নতুন ফিচার শেষ ---
+
       default:
         api.sendMessage(
           "❓ গ্রুপ ম্যানেজমেন্ট কমান্ড:\n" +
@@ -131,7 +152,8 @@ module.exports = {
             "• reject <id|নাম|নম্বর> - গ্রুপ রিজেক্ট করুন\n" +
             "• rejectall - সব পেন্ডিং গ্রুপ রিজেক্ট করুন\n" +
             "• approved - অ্যাপ্রুভড গ্রুপ দেখুন\n" +
-            "• remove <id|নাম|নম্বর> - অ্যাপ্রুভড গ্রুপ রিমুভ করুন",
+            "• remove <id|নাম|নম্বর> - অ্যাপ্রুভড গ্রুপ রিমুভ করুন\n" +
+            "• approveid <id> - আইডি দিয়ে সরাসরি গ্রুপ অ্যাপ্রুভ করুন", // <-- নতুন কমান্ডের হেল্প টেক্সট
           message.threadID,
           message.messageID
         );

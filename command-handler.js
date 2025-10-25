@@ -1,18 +1,18 @@
-// command-handler.js (v1.2 - Final Fix for commandName & Error Handling)
+// command-handler.js (v1.3 - Multi-Admin TypeFix)
 
 const fs = require("fs");
 const path = require("path");
-
 const commands = new Map(); // Stores all command objects (including aliases)
-const commandCooldowns = new Map(); // Stores cooldown timestamps
+const commandCooldowns = new Map();
+// Stores cooldown timestamps
 
 // === Command Loader Function ===
 function loadCommands() {
-  commands.clear(); // Clear existing commands before reloading
+  commands.clear();
+  // Clear existing commands before reloading
   const commandFiles = fs
     .readdirSync(path.join(__dirname, "commands"))
     .filter((file) => file.endsWith(".js"));
-
   for (const file of commandFiles) {
     try {
       // Clear cache for the specific command file to ensure updates are loaded
@@ -36,6 +36,7 @@ function loadCommands() {
             const aliasLower = alias.toLowerCase();
             if (!commands.has(aliasLower)) {
               // Do not overwrite if alias clashes with a primary name
+
               commands.set(aliasLower, command);
             } else {
               // Warn only if the alias conflicts with a DIFFERENT command's primary name
@@ -79,7 +80,9 @@ async function handleCommand({ api, message, config }) {
   const regularPrefix = config.BOT_PREFIX;
   const adminPrefix = config.SECRET_ADMIN_PREFIX;
   const senderID = message.senderID;
-  const isAdmin = config.ADMIN_IDS.includes(senderID);
+
+  // <--- সমাধান: senderID কে String() দিয়ে কনভার্ট করা হয়েছে ---
+  const isAdmin = config.ADMIN_IDS.includes(String(senderID));
 
   let prefixUsed = null;
   let commandBody = null;
@@ -96,11 +99,14 @@ async function handleCommand({ api, message, config }) {
     return false; // Not a command
   }
 
-  if (!commandBody) return false; // Ignore empty commands (e.g., just "/" or "@")
+  if (!commandBody) return false;
+  // Ignore empty commands (e.g., just "/" or "@")
 
   const args = commandBody.split(/ +/);
-  usedAlias = args.shift().toLowerCase(); // <-- Get the command name/alias used
-  const command = commands.get(usedAlias); // Find the command object using the name/alias
+  usedAlias = args.shift().toLowerCase();
+  // <-- Get the command name/alias used
+  const command = commands.get(usedAlias);
+  // Find the command object using the name/alias
 
   // --- Command Not Found ---
   if (!command) {
@@ -109,10 +115,12 @@ async function handleCommand({ api, message, config }) {
       // Silently ignore unrecognized admin commands
       return true;
     }
-    return false; // Ignore unrecognized regular commands silently
+    return false;
+    // Ignore unrecognized regular commands silently
   }
 
-  const primaryCommandName = command.config.name.toLowerCase(); // Get the main name
+  const primaryCommandName = command.config.name.toLowerCase();
+  // Get the main name
 
   // --- Special prefix check for admin commands ---
   // List all commands that MUST use the admin prefix
@@ -124,7 +132,8 @@ async function handleCommand({ api, message, config }) {
     "guide",
     "teach",
     "unsend",
-  ]; // Add any other admin commands here
+  ];
+  // Add any other admin commands here
   if (
     adminOnlyCommands.includes(primaryCommandName) &&
     prefixUsed !== adminPrefix
@@ -133,7 +142,8 @@ async function handleCommand({ api, message, config }) {
       `[Permission Denied] Command '${primaryCommandName}' requires admin prefix.`
     );
     // Silently ignore if an admin command is used with the regular prefix
-    return true; // Consider it handled by ignoring
+    return true;
+    // Consider it handled by ignoring
   }
 
   // --- General Permission Check (for commands allowed with regular prefix but might have perm level 1) ---
@@ -150,7 +160,8 @@ async function handleCommand({ api, message, config }) {
   }
 
   // --- Cooldown Check ---
-  const commandKeyForCooldown = primaryCommandName; // Use primary name for cooldown tracking
+  const commandKeyForCooldown = primaryCommandName;
+  // Use primary name for cooldown tracking
   if (!commandCooldowns.has(commandKeyForCooldown)) {
     commandCooldowns.set(commandKeyForCooldown, new Map());
   }
@@ -175,7 +186,6 @@ async function handleCommand({ api, message, config }) {
     console.log(
       `[Command Exec] Running '${primaryCommandName}' (triggered by '${usedAlias}') for user ${senderID} in thread ${message.threadID}`
     );
-
     // *** সংশোধিত: commandName হিসেবে ব্যবহৃত এলিয়াসটি সঠিকভাবে পাস করা হচ্ছে ***
     await command.run({
       api,
@@ -214,7 +224,8 @@ async function handleCommand({ api, message, config }) {
     // Do NOT send error message back to the user/group
   }
 
-  return true; // Command was handled (successfully or with error)
+  return true;
+  // Command was handled (successfully or with error)
 }
 
 module.exports = {
