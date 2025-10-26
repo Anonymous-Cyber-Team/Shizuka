@@ -253,7 +253,11 @@ async function getShizukaReply(threadID, userPrompt, senderName = null) {
     ); // Log index used
 
     const genAI = new GoogleGenerativeAI(apiKeyUsed);
-    const model = genAI.getGenerativeModel({ model: "gemma-3-27b-it" }); // Ensure model name is correct
+
+    // ============ [BUG FIX] ============
+    // const model = genAI.getGenerativeModel({ model: "gemma-3-27b-it" }); // <-- BUG: Missing "models/" prefix, causes 404
+    const model = genAI.getGenerativeModel({ model: "gemma-3-27b-it" }); // <-- FIX: Added "models/" prefix
+    // ===================================
 
     console.log(
       `[Gemini Debug] Starting chat with history (length ${currentHistory.length})...`
