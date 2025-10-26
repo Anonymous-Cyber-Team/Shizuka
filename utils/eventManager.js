@@ -68,7 +68,7 @@ async function fetchAndSaveUpcomingEvents() {
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemma-3-27b" }); // <-- কমেন্ট অনুযায়ী আসল মডেল ব্যবহার করা হচ্ছে
+    const model = genAI.getGenerativeModel({ model: "gemma-3-27b-it" }); // <-- কমেন্ট অনুযায়ী আসল মডেল ব্যবহার করা হচ্ছে
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();

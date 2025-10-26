@@ -253,7 +253,7 @@ async function getShizukaReply(threadID, userPrompt, senderName = null) {
     ); // Log index used
 
     const genAI = new GoogleGenerativeAI(apiKeyUsed);
-    const model = genAI.getGenerativeModel({ model: "gemma-3-27b" }); // Ensure model name is correct
+    const model = genAI.getGenerativeModel({ model: "gemma-3-27b-it" }); // Ensure model name is correct
 
     console.log(
       `[Gemini Debug] Starting chat with history (length ${currentHistory.length})...`
