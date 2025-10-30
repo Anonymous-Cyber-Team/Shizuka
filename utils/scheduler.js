@@ -47,7 +47,7 @@ function initializeScheduler(api, config) {
         for (const event of todaysEvents) {
           const eventTopic = `আজ ${now.format("D MMM")} তারিখ, ${event.name} (${
             event.type
-          } দিবস)। এই দিবসটি সম্পর্কে সিজুকা স্টাইলে মিষ্টি করে ছোট্ট একটি বার্তা দাও।`;
+          } দিবস)। এই দিবসটি সম্পর্কে মিষ্টি করে ছোট্ট একটি বার্তা দাও।`;
           await sendScheduledMessage(api, eventTopic, currentApproved);
           await new Promise((resolve) => setTimeout(resolve, 5000)); // Delay between multiple events
         }
@@ -75,15 +75,15 @@ function initializeScheduler(api, config) {
     else if (hour === 0 && minute === 0)
       topic = `এখন রাত ১২টা (${currentTime})। সবাইকে মিষ্টি করে 'শুভ রাত্রি' জানাও।`;
     else if (hour === 2 && minute === 0)
-      topic = `এখন রাত ২টা (${currentTime})। যারা এখনো জেগে আছে, তাদের সিজুকা স্টাইলে, খুব ফানি এবং মিষ্টি করে ঘুমাতে যাওয়ার জন্য একটি বার্তা দাও।`;
+      topic = `এখন রাত ২টা (${currentTime})। যারা এখনো জেগে আছে, তাদের খুব ফানি এবং মিষ্টি করে ঘুমাতে যাওয়ার জন্য একটি বার্তা দাও।`;
     else if (dayOfWeek === 5 && hour === 12 && minute === 0)
       topic = `আজ শুক্রবার, দুপুর ১২টা (${currentTime})। জুম্মার নামাজের গুরুত্ব সম্পর্কে একটি সুন্দর ইসলামিক বার্তা দাও।`;
     else if (dayOfWeek === 5 && hour === 12 && minute === 30)
-      topic = `এখন সাড়ে ১২টা (${currentTime})। জুম্মার নামাজের সময় হয়ে যাচ্ছে! সিজুকা স্টাইলে সবাইকে একটু তাড়া দিয়ে মিষ্টি করে বলো নামাজে যেতে, ভাইয়া এবং আপু উভয়কেই।`;
+      topic = `এখন সাড়ে ১২টা (${currentTime})। জুম্মার নামাজের সময় হয়ে যাচ্ছে! সবাইকে একটু তাড়া দিয়ে মিষ্টি করে বলো নামাজে যেতে, ভাইয়া এবং আপু উভয়কেই।`;
     else if (hour > 7 && hour < 22 && minute === 0)
-      topic = `এখন ${currentTime} বাজে। সিজুকা স্টাইলে, খুব সহজ এবং স্বাভাবিকভাবে সময়টা জানিয়ে ছোট্ট একটি বার্তা দাও। কোনো অপ্রয়োজনীয় ভূমিকা (যেমন: 'আপনারা জানেন') বা অতিরিক্ত কথা (যেমন: 'ঘড়ি টিক টিক করছে' বা 'তারিখ মনে রাখবেন') কঠোরভাবে পরিহার করবে।`;
+      topic = `এখন ${currentTime} বাজে। খুব সহজ এবং স্বাভাবিকভাবে সময়টা জানিয়ে ছোট্ট একটি বার্তা দাও।`;
     else if (hour === 14 && minute === 0)
-      topic = `এখন দুপুর ২টা (${currentTime})। সিজুকা স্টাইলে, গ্রুপের সবার জন্য একটি মজার কিন্তু সহজ প্রশ্ন করো (যেমন বই, এনিমে বা সাধারণ জ্ঞান নিয়ে)।`;
+      topic = `এখন দুপুর ২টা (${currentTime})। গ্রুপের সবার জন্য একটি মজার কিন্তু সহজ প্রশ্ন করো (যেমন বই, এনিমে, সাধারণ জ্ঞান ইত্যাদি নিয়ে)।`;
 
     // --- Countdown Event Checker ---
     COUNTDOWN_EVENTS.forEach((event) => {
