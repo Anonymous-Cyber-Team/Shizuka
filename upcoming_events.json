@@ -1,0 +1,32 @@
+[
+  {
+    "date": "2026-04-01",
+    "name": "April Fools' Day",
+    "type": "Cultural"
+  },
+  {
+    "date": "2026-04-02",
+    "name": "Good Friday",
+    "type": "Religious"
+  },
+  {
+    "date": "2026-04-04",
+    "name": "Easter Sunday",
+    "type": "Religious"
+  },
+  {
+    "date": "2026-04-05",
+    "name": "Holi (India/Nepal - may be observed by Bangladeshi diaspora)",
+    "type": "Religious"
+  },
+  {
+    "date": "2026-04-05",
+    "name": "Holi (India/Nepal - may have celebrations in Bangladeshi communities)",
+    "type": "Religious/Cultural"
+  },
+  {
+    "date": "2026-04-07",
+    "name": "World Health Day",
+    "type": "International"
+  }
+]
