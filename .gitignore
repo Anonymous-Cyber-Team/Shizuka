@@ -3,6 +3,7 @@
 
 # Shizuka Backup Folder
 /shizuka_backup
+.env
 
 # Sensitive configuration files
 appstate.json
