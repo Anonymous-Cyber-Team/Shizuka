@@ -21,6 +21,15 @@ const { loadEvents, handleEvent } = require("./event-handler.js");
 const groupManager = require("./utils/groupManager");
 const { initializeScheduler } = require("./utils/scheduler.js");
 
+// ============ [ ANTI-CRASH SHIELD ] ============
+process.on('unhandledRejection', (reason, p) => {
+    console.error('❌ [Anti-Crash] Unhandled Rejection:', reason);
+});
+process.on('uncaughtException', (err, origin) => {
+    console.error('❌ [Anti-Crash] Uncaught Exception:', err);
+});
+// ===============================================
+
 // === ২. কনফিগারেশন ফাইল লোড ===
 let config;
 try {
