@@ -103,7 +103,7 @@ async function saveAppStateToDb(state) {
     await AppStateModel.findOneAndUpdate(
       {},
       { state },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
+      { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
     );
     console.log("[MongoDB] AppState persisted.");
   } catch (mongoError) {
