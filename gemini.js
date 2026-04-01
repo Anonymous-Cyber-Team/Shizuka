@@ -249,18 +249,25 @@ async function getShizukaReply(threadID, userPrompt, senderName = null) {
         currentApiKeyIndex - 1 < 0
           ? GEMINI_API_KEYS.length - 1
           : currentApiKeyIndex - 1
-      }...`
+      }...`,
     ); // Log index used
 
     const genAI = new GoogleGenerativeAI(apiKeyUsed);
 
-    // ============ [BUG FIX] ============
-    // const model = genAI.getGenerativeModel({ model: "gemma-3-27b-it" }); // <-- BUG: Missing "models/" prefix, causes 404
-    const model = genAI.getGenerativeModel({ model: "gemma-3-27b-it" }); // <-- FIX: Added "models/" prefix
-    // ===================================
+    // ============ [PERMANENT FIX FOR REPETITION] ============
+    const model = genAI.getGenerativeModel({
+      model: "models/gemma-3-27b-it",
+      generationConfig: {
+        temperature: 0.6, // সৃজনশীলতা এবং ফোকাস ব্যালেন্স করে (বেশি হলে আবোলতাবোল বকবে)
+        topP: 0.9, // লজিক্যাল শব্দ বেছে নিতে সাহায্য করে
+        topK: 40, // সেরা ৪০টি শব্দের বাইরে যাবে না
+        maxOutputTokens: 500, // উত্তর অতিরিক্ত বড় হওয়া ঠেকাবে
+      },
+    });
+    // ========================================================
 
     console.log(
-      `[Gemini Debug] Starting chat with history (length ${currentHistory.length})...`
+      `[Gemini Debug] Starting chat with history (length ${currentHistory.length})...`,
     );
     const chat = model.startChat({ history: currentHistory });
 
@@ -272,7 +279,7 @@ async function getShizukaReply(threadID, userPrompt, senderName = null) {
     if (!response || typeof response.text !== "function") {
       console.error(
         "[Gemini Error] Invalid response structure received from API:",
-        response
+        response,
       );
       throw new Error("Gemini থেকে একটি অপ্রত্যাশিত উত্তর এসেছে।");
     }
@@ -281,8 +288,8 @@ async function getShizukaReply(threadID, userPrompt, senderName = null) {
     console.log(
       `[Gemini Debug] Received text response: "${botReply.substring(
         0,
-        100
-      )}..."`
+        100,
+      )}..."`,
     );
 
     if (!botReply) {
@@ -304,7 +311,7 @@ async function getShizukaReply(threadID, userPrompt, senderName = null) {
           ...currentHistory.slice(-(HISTORY_MAX_LENGTH * 2 - 2)),
         ];
         console.log(
-          `[Gemini Debug] Pruned history AGAIN after adding model reply from ${oldLen} to ${currentHistory.length}`
+          `[Gemini Debug] Pruned history AGAIN after adding model reply from ${oldLen} to ${currentHistory.length}`,
         );
       }
       conversationHistory.set(historyKey, {
@@ -312,11 +319,11 @@ async function getShizukaReply(threadID, userPrompt, senderName = null) {
         timestamp: Date.now(),
       });
       console.log(
-        `[Gemini Debug] Saved model reply to history for Thread: ${historyKey}. History length: ${currentHistory.length}`
+        `[Gemini Debug] Saved model reply to history for Thread: ${historyKey}. History length: ${currentHistory.length}`,
       );
     } else {
       console.log(
-        `[Gemini Debug] Skipping history save for scheduled/special task.`
+        `[Gemini Debug] Skipping history save for scheduled/special task.`,
       );
     }
 
