@@ -168,6 +168,17 @@ app.listen(port, () =>
   console.log(`[+] ওয়েব সার্ভার চালু হয়েছে পোর্ট ${port}-এ।`),
 );
 
+// === সেলফ পিং সিস্টেম (বট নিজেকে নিজে জাগিয়ে রাখবে) ===
+const https = require('https');
+setInterval(() => {
+    https.get('https://shizuka-8equ.onrender.com/', (res) => {
+        console.log(`[Keep-Alive] Self-ping status: ${res.statusCode}`);
+    }).on('error', (err) => {
+        console.error('[Keep-Alive] Self-ping error:', err.message);
+    });
+}, 5 * 60 * 1000); // প্রতি ৫ মিনিট পরপর
+// =========================================================
+
 // === ৪. বট লগইন এবং লিসেনার চালু ===
 (async () => {
   loadCommands();
