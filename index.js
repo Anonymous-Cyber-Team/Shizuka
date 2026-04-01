@@ -10,6 +10,7 @@ const login = require("devil-x-fca");
 const express = require("express");
 const fs = require("fs-extra");
 const path = require("path");
+const mongoose = require("mongoose");
 const { getShizukaReply } = require("./gemini.js"); // <-- gemini.js ইম্পোর্ট নিশ্চিত করুন
 const {
   loadCommands,
@@ -24,13 +25,13 @@ const { initializeScheduler } = require("./utils/scheduler.js");
 let config;
 try {
   config = JSON.parse(
-    fs.readFileSync(path.join(__dirname, "config.json"), "utf8")
+    fs.readFileSync(path.join(__dirname, "config.json"), "utf8"),
   );
   // <<< DEBUG: Log loaded Admin IDs >>>
   console.log(
     "[Config Load] Loaded ADMIN_IDS:",
     JSON.stringify(config.ADMIN_IDS),
-    `- Type: ${typeof config.ADMIN_IDS}`
+    `- Type: ${typeof config.ADMIN_IDS}`,
   );
   if (!Array.isArray(config.ADMIN_IDS)) {
     console.error("[Config Error] ADMIN_IDS is not an array!");
@@ -40,7 +41,7 @@ try {
   // <<< END DEBUG >>>
 } catch (error) {
   console.error(
-    "ত্রুটি: 'config.json' ফাইলটি পাওয়া যায়নি বা ফাইলের ফর্ম্যাট ঠিক নেই।"
+    "ত্রুটি: 'config.json' ফাইলটি পাওয়া যায়নি বা ফাইলের ফর্ম্যাট ঠিক নেই।",
   );
   process.exit(1);
 }
@@ -49,6 +50,60 @@ const BOT_NAMES = config.BOT_NAMES || ["সিজুকা"];
 const BAD_WORDS = config.BAD_WORDS || [];
 const ADMIN_IDS = config.ADMIN_IDS || [];
 const MAX_QUEUE_DELAY_SECONDS = config.MAX_QUEUE_DELAY_SECONDS ?? 0;
+
+const MONGODB_URI = process.env.MONGODB_URI || null;
+const appStateSchema = new mongoose.Schema(
+  {
+    state: { type: mongoose.Schema.Types.Mixed, required: true },
+  },
+  { timestamps: true },
+);
+const AppStateModel =
+  mongoose.models.AppState || mongoose.model("AppState", appStateSchema);
+
+async function connectToMongoDB() {
+  if (!MONGODB_URI) {
+    console.warn(
+      "[MongoDB] MONGODB_URI is not defined. Persistent appstate storage is disabled.",
+    );
+    return;
+  }
+
+  try {
+    await mongoose.connect(MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log("[MongoDB] Connected successfully.");
+  } catch (mongoError) {
+    console.error("[MongoDB] Connection failed:", mongoError);
+  }
+}
+
+async function loadAppStateFromDb() {
+  if (!MONGODB_URI) return null;
+  try {
+    const doc = await AppStateModel.findOne().lean();
+    return doc?.state ?? null;
+  } catch (mongoError) {
+    console.error("[MongoDB] Failed to load appstate:", mongoError);
+    return null;
+  }
+}
+
+async function saveAppStateToDb(state) {
+  if (!MONGODB_URI || !state) return;
+  try {
+    await AppStateModel.findOneAndUpdate(
+      {},
+      { state },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
+    console.log("[MongoDB] AppState persisted.");
+  } catch (mongoError) {
+    console.error("[MongoDB] Failed to save appstate:", mongoError);
+  }
+}
 
 // === ৩. ভেরিয়েবল ও ওয়েব সার্ভার ===
 const userCooldowns = new Map();
@@ -60,21 +115,30 @@ const isProcessingQueue = new Map();
 const app = express();
 const port = process.env.PORT || 3000;
 app.get("/", (req, res) =>
-  res.send("Shizuka Bot is keeping me alive! Status: Running...")
+  res.send("Shizuka Bot is keeping me alive! Status: Running..."),
 );
 app.listen(port, () =>
-  console.log(`[+] ওয়েব সার্ভার চালু হয়েছে পোর্ট ${port}-এ।`)
+  console.log(`[+] ওয়েব সার্ভার চালু হয়েছে পোর্ট ${port}-এ।`),
 );
 
 // === ৪. বট লগইন এবং লিসেনার চালু ===
-try {
+(async () => {
   loadCommands();
   loadEvents();
+  await connectToMongoDB();
+
+  let loginAppState = await loadAppStateFromDb();
+  if (!loginAppState) {
+    const appStatePath = path.join(__dirname, "appstate.json");
+    if (fs.existsSync(appStatePath)) {
+      loginAppState = JSON.parse(fs.readFileSync(appStatePath, "utf8"));
+      await saveAppStateToDb(loginAppState);
+    }
+  }
+
   login(
     {
-      appState: JSON.parse(
-        fs.readFileSync(path.join(__dirname, "appstate.json"), "utf8")
-      ),
+      appState: loginAppState,
     },
     (err, api) => {
       if (err) return console.error("❌ লগইন ব্যর্থ:", err.error || err);
@@ -82,6 +146,25 @@ try {
       const botID = String(api.getCurrentUserID());
       console.log(`✅ বট লগইন সফল! | ID: ${botID}`);
       api.setOptions({ logLevel: "silent", listenEvents: true });
+      api.setOptions({ userAgent: config.userAgent });
+
+      saveAppStateToDb(api.getAppState()).catch((saveError) =>
+        console.error("[MongoDB] Initial appstate save failed:", saveError),
+      );
+
+      if (MONGODB_URI) {
+        setInterval(
+          () => {
+            saveAppStateToDb(api.getAppState()).catch((saveError) =>
+              console.error(
+                "[MongoDB] Periodic appstate save failed:",
+                saveError,
+              ),
+            );
+          },
+          5 * 60 * 1000,
+        );
+      }
 
       initializeScheduler(api, config);
       setInterval(clearOldCache, 5 * 60 * 1000);
@@ -97,7 +180,7 @@ try {
               if (err) return reject(err);
               resolve(messageInfo);
             },
-            replyToMessageID
+            replyToMessageID,
           );
         });
       }
@@ -110,7 +193,7 @@ try {
         // Check approval *before* processing
         if (isGroup && !groupManager.isGroupApprovedAndActive(threadID)) {
           console.log(
-            `[Queue Debug - ${threadID}] Group not active/approved. Clearing queue and stopping.`
+            `[Queue Debug - ${threadID}] Group not active/approved. Clearing queue and stopping.`,
           );
           messageQueue.delete(threadID);
           isProcessingQueue.set(threadID, false);
@@ -120,14 +203,14 @@ try {
         const queue = messageQueue.get(threadID);
         if (!queue || queue.length === 0) {
           console.log(
-            `[Queue Debug - ${threadID}] Queue is empty. Setting processing flag to false.`
+            `[Queue Debug - ${threadID}] Queue is empty. Setting processing flag to false.`,
           );
           isProcessingQueue.set(threadID, false);
           return;
         }
 
         console.log(
-          `[Queue Debug - ${threadID}] Queue length: ${queue.length}. Processing next item.`
+          `[Queue Debug - ${threadID}] Queue length: ${queue.length}. Processing next item.`,
         );
         isProcessingQueue.set(threadID, true); // Mark as processing *before* async operations
 
@@ -136,13 +219,13 @@ try {
 
         try {
           console.log(
-            `[Queue Debug - ${threadID}] Applying delay if configured (max ${MAX_QUEUE_DELAY_SECONDS}s)...`
+            `[Queue Debug - ${threadID}] Applying delay if configured (max ${MAX_QUEUE_DELAY_SECONDS}s)...`,
           );
           if (MAX_QUEUE_DELAY_SECONDS > 0) {
             const delay = Math.random() * MAX_QUEUE_DELAY_SECONDS * 1000;
             await new Promise((resolve) => setTimeout(resolve, delay));
             console.log(
-              `[Queue Debug - ${threadID}] Delay applied: ${delay.toFixed(0)}ms`
+              `[Queue Debug - ${threadID}] Delay applied: ${delay.toFixed(0)}ms`,
             );
           }
 
@@ -151,19 +234,19 @@ try {
               nextMessage.senderID
             }, MsgID ${originalMessageID}. Prompt starts with: "${promptForAI.substring(
               0,
-              50
-            )}..."`
+              50,
+            )}..."`,
           );
           const textFromAI = await getShizukaReply(
             threadID,
             promptForAI,
-            senderNameForAI
+            senderNameForAI,
           );
           console.log(
             `[Queue Debug - ${threadID}] Received reply from getShizukaReply: "${textFromAI.substring(
               0,
-              50
-            )}..."`
+              50,
+            )}..."`,
           );
 
           let textToSend = textFromAI,
@@ -184,7 +267,7 @@ try {
           // --- Sending logic with logging ---
           if (textToSend) {
             console.log(
-              `[Queue Debug - ${threadID}] Attempting to send reply (replying to ${originalMessageID}).`
+              `[Queue Debug - ${threadID}] Attempting to send reply (replying to ${originalMessageID}).`,
             );
             try {
               // ============ [BUG FIX] ============
@@ -192,13 +275,13 @@ try {
               await sendMessagePromise(textToSend, threadID, originalMessageID); // <-- FIX: Awaiting promise wrapper
               // ===================================
               console.log(
-                `[Queue Debug - ${threadID}] Reply sent successfully.`
+                `[Queue Debug - ${threadID}] Reply sent successfully.`,
               );
             } catch (replyError) {
               console.warn(
                 `[Queue Warn - ${threadID}] Failed to reply to ${originalMessageID} (${
                   replyError.errorSummary || replyError
-                }). Attempting fallback send.`
+                }). Attempting fallback send.`,
               );
               try {
                 // ============ [BUG FIX] ============
@@ -206,52 +289,52 @@ try {
                 await sendMessagePromise(textToSend, threadID); // <-- FIX: Awaiting promise wrapper
                 // ===================================
                 console.log(
-                  `[Queue Debug - ${threadID}] Fallback send successful.`
+                  `[Queue Debug - ${threadID}] Fallback send successful.`,
                 );
               } catch (sendError) {
                 console.error(
                   `[Queue Error - ${threadID}] Fallback send also failed:`,
-                  sendError.errorSummary || sendError
+                  sendError.errorSummary || sendError,
                 );
                 // Don't throw here, let finally handle queue progression
               }
             }
           } else {
             console.log(
-              `[Queue Debug - ${threadID}] No text to send after emoji parsing.`
+              `[Queue Debug - ${threadID}] No text to send after emoji parsing.`,
             );
           }
 
           if (reactionEmoji) {
             console.log(
-              `[Queue Debug - ${threadID}] Setting reaction: ${reactionEmoji}`
+              `[Queue Debug - ${threadID}] Setting reaction: ${reactionEmoji}`,
             );
             api.setMessageReaction(
               reactionEmoji,
               nextMessage.messageID,
               () => {},
-              true
+              true,
             );
           }
           if (separateEmoji) {
             console.log(
-              `[Queue Debug - ${threadID}] Sending separate emoji: ${separateEmoji}`
+              `[Queue Debug - ${threadID}] Sending separate emoji: ${separateEmoji}`,
             );
             setTimeout(() => api.sendMessage(separateEmoji, threadID), 800);
           }
 
           console.log(
-            `[Queue Debug - ${threadID}] Shifting successful item from queue.`
+            `[Queue Debug - ${threadID}] Shifting successful item from queue.`,
           );
           queue.shift(); // সফল হলে Queue থেকে সরানো
         } catch (aiError) {
           // This catches errors from getShizukaReply
           console.error(
             `[Queue Error - ${threadID}] Error during AI processing or sending for MsgID ${originalMessageID}:`,
-            aiError
+            aiError,
           );
           console.log(
-            `[Queue Debug - ${threadID}] Shifting errored item from queue.`
+            `[Queue Debug - ${threadID}] Shifting errored item from queue.`,
           );
           if (queue.length > 0) queue.shift(); // এরর হলেও Queue থেকে সরানো (যদি আইটেম থাকে)
         } finally {
@@ -259,13 +342,13 @@ try {
           const currentQueue = messageQueue.get(threadID); // Re-fetch queue state
           if (currentQueue && currentQueue.length > 0) {
             console.log(
-              `[Queue Debug - ${threadID}] Queue still has items (${currentQueue.length}). Scheduling next process.`
+              `[Queue Debug - ${threadID}] Queue still has items (${currentQueue.length}). Scheduling next process.`,
             );
             // Schedule next run slightly delayed
             setTimeout(() => processQueue(threadID), 500);
           } else {
             console.log(
-              `[Queue Debug - ${threadID}] Queue is now empty. Deleting queue and setting processing flag to false.`
+              `[Queue Debug - ${threadID}] Queue is now empty. Deleting queue and setting processing flag to false.`,
             );
             messageQueue.delete(threadID);
             isProcessingQueue.set(threadID, false); // Mark as not processing ONLY when queue is confirmed empty
@@ -279,7 +362,7 @@ try {
         console.log(
           `[Queue Debug - ${threadID}] enqueueAIRequest called by User ${
             message.senderID
-          }. Prompt starts with: "${promptForAI.substring(0, 50)}..."`
+          }. Prompt starts with: "${promptForAI.substring(0, 50)}..."`,
         );
 
         if (!messageQueue.has(threadID)) {
@@ -290,22 +373,22 @@ try {
         const queue = messageQueue.get(threadID);
         queue.push({ message, senderNameForAI, promptForAI });
         console.log(
-          `[Queue Debug - ${threadID}] Added item to queue. New length: ${queue.length}.`
+          `[Queue Debug - ${threadID}] Added item to queue. New length: ${queue.length}.`,
         );
 
         const currentlyProcessing = isProcessingQueue.get(threadID);
         console.log(
-          `[Queue Debug - ${threadID}] Currently processing? ${currentlyProcessing}`
+          `[Queue Debug - ${threadID}] Currently processing? ${currentlyProcessing}`,
         );
 
         if (!currentlyProcessing) {
           console.log(
-            `[Queue Debug - ${threadID}] Not currently processing. Starting processQueue.`
+            `[Queue Debug - ${threadID}] Not currently processing. Starting processQueue.`,
           );
           processQueue(threadID);
         } else {
           console.log(
-            `[Queue Debug - ${threadID}] Already processing. Item will be handled later.`
+            `[Queue Debug - ${threadID}] Already processing. Item will be handled later.`,
           );
         }
       }
@@ -363,12 +446,12 @@ try {
           // --- নতুন গ্রুপ শনাক্তকরণ ---
           if (isGroup && !isApproved && !isPending) {
             /* ... (অপরিবর্তিত) ... */ console.log(
-              `[New Group Detected] First message received from unknown group: ${threadID}`
+              `[New Group Detected] First message received from unknown group: ${threadID}`,
             );
             const handled = await groupManager.handleNewGroupInteraction(
               api,
               threadID,
-              config
+              config,
             );
             if (threadID) api.markAsRead(threadID, () => {});
             return;
@@ -432,15 +515,15 @@ try {
           const messageBodyLower = message.body.toLowerCase();
           if (
             BAD_WORDS.some((word) =>
-              messageBodyLower.includes(word.toLowerCase())
+              messageBodyLower.includes(word.toLowerCase()),
             )
           ) {
             console.log(
-              `[AI Trigger - BadWord] User: ${senderID}, Thread: ${threadID}`
+              `[AI Trigger - BadWord] User: ${senderID}, Thread: ${threadID}`,
             ); // <-- AI কল লগ
             return enqueueAIRequest(
               message,
-              `##BAD_WORD_WARNING## ${message.body}`
+              `##BAD_WORD_WARNING## ${message.body}`,
             );
           }
 
@@ -453,7 +536,7 @@ try {
               return;
             userCooldowns.set(`salam_${senderID}`, now);
             console.log(
-              `[AI Trigger - Salam] User: ${senderID}, Thread: ${threadID}`
+              `[AI Trigger - Salam] User: ${senderID}, Thread: ${threadID}`,
             ); // <-- AI কল লগ
             return enqueueAIRequest(message, "##SALAM_REPLY_REQUEST##");
           }
@@ -461,17 +544,17 @@ try {
           // --- AI Trigger Check ---
           let isReplyToBot = String(message.messageReply?.senderID) === botID;
           const includesBotName = BOT_NAMES.some((name) =>
-            messageBodyLower.includes(name.toLowerCase())
+            messageBodyLower.includes(name.toLowerCase()),
           );
           if (isReplyToBot || includesBotName || (isAdmin && !isGroup)) {
             console.log(
-              `[AI Trigger - Mention/Reply/Inbox] User: ${senderID}, Thread: ${threadID}`
+              `[AI Trigger - Mention/Reply/Inbox] User: ${senderID}, Thread: ${threadID}`,
             ); // <-- AI কল লগ
             const userInfo = await api.getUserInfo([senderID]);
             return enqueueAIRequest(
               message,
               message.body.trim(),
-              userInfo?.[senderID]?.name
+              userInfo?.[senderID]?.name,
             );
           }
 
@@ -483,7 +566,7 @@ try {
             Math.random() < config.REPLY_PROMPT_CHANCE
           ) {
             console.log(
-              `[AI Trigger - Random] User: ${senderID}, Thread: ${threadID}`
+              `[AI Trigger - Random] User: ${senderID}, Thread: ${threadID}`,
             ); // <-- AI কল লগ
             enqueueAIRequest(message, "##REPLY_PROMPT_REQUEST##");
           }
@@ -492,11 +575,11 @@ try {
           // console.error("[Listener Error] Associated message object:", JSON.stringify(message || {}, null, 2));
         }
       }); // listenMqtt ends here
-    } // login callback ends here
+    }, // login callback ends here
   ); // login ends here
-} catch (e) {
+})().catch((e) => {
   console.error("বট চালু করার সময় মারাত্মক ত্রুটি:", e);
-}
+});
 
 function clearOldCache() {
   /* ... (অপরিবর্তিত) ... */ const now = Date.now();
