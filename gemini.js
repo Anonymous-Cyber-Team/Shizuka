@@ -17,7 +17,7 @@ let currentApiKeyIndex = 0; // Initialize index
 
 try {
   config = JSON.parse(
-    fs.readFileSync(path.join(__dirname, "config.json"), "utf8")
+    fs.readFileSync(path.join(__dirname, "config.json"), "utf8"),
   );
   GEMINI_API_KEYS = config.GEMINI_API_KEYS; // Assign from config
 
@@ -28,18 +28,18 @@ try {
     GEMINI_API_KEYS.some((key) => !key || typeof key !== "string")
   ) {
     console.error(
-      "[Gemini Config Error] 'GEMINI_API_KEYS' অ্যারে সঠিকভাবে config.json এ সেট করা নেই বা খালি।"
+      "[Gemini Config Error] 'GEMINI_API_KEYS' অ্যারে সঠিকভাবে config.json এ সেট করা নেই বা খালি।",
     );
     GEMINI_API_KEYS = []; // Reset to empty if invalid
   } else {
     console.log(
-      `[Gemini Keys] ${GEMINI_API_KEYS.length} টি API Key লোড হয়েছে।`
+      `[Gemini Keys] ${GEMINI_API_KEYS.length} টি API Key লোড হয়েছে।`,
     );
   }
 } catch (error) {
   console.error(
     "[Gemini Config Error] 'config.json' ফাইলটি লোড করা যায়নি:",
-    error
+    error,
   );
   config = {}; // Set empty config on error
   GEMINI_API_KEYS = []; // Ensure keys array is empty on error
@@ -51,7 +51,7 @@ try {
   shizukaPersona = fs.readFileSync(path.join(__dirname, "persona.txt"), "utf8");
 } catch (error) {
   console.warn(
-    "[Gemini Warn] 'persona.txt' ফাইলটি পাওয়া যায়নি। ডিফল্ট পার্সোনা ব্যবহার করা হচ্ছে।"
+    "[Gemini Warn] 'persona.txt' ফাইলটি পাওয়া যায়নি। ডিফল্ট পার্সোনা ব্যবহার করা হচ্ছে।",
   );
 }
 
@@ -66,7 +66,7 @@ function getNextApiKey() {
   const key = GEMINI_API_KEYS[keyIndexToUse];
   currentApiKeyIndex = (currentApiKeyIndex + 1) % GEMINI_API_KEYS.length; // Calculate next index
   console.log(
-    `[Gemini Debug] Using API Key Index: ${keyIndexToUse}, Next Index Will Be: ${currentApiKeyIndex}`
+    `[Gemini Debug] Using API Key Index: ${keyIndexToUse}, Next Index Will Be: ${currentApiKeyIndex}`,
   );
   return key;
 }
@@ -82,7 +82,7 @@ function clearOldHistory() {
     if (now - data.timestamp > HISTORY_MAX_AGE_MS) {
       conversationHistory.delete(threadID);
       console.log(
-        `[History] ১ ঘণ্টা পার হওয়ায় ${threadID} গ্রুপের/ইনবক্সের স্মৃতি মুছে ফেলা হলো।`
+        `[History] ১ ঘণ্টা পার হওয়ায় ${threadID} গ্রুপের/ইনবক্সের স্মৃতি মুছে ফেলা হলো।`,
       );
     }
   });
@@ -108,7 +108,7 @@ function getCurrentTimeInfo() {
 async function getShizukaReply(threadID, userPrompt, senderName = null) {
   console.log(`\n--- [Gemini Call Start - Thread: ${threadID}] ---`);
   console.log(
-    `[Gemini Debug] Initial User Prompt: "${userPrompt.substring(0, 100)}..."`
+    `[Gemini Debug] Initial User Prompt: "${userPrompt.substring(0, 100)}..."`,
   );
   console.log(`[Gemini Debug] Sender Name: ${senderName}`);
 
@@ -123,7 +123,7 @@ async function getShizukaReply(threadID, userPrompt, senderName = null) {
     console.log(`[Gemini Special] সালামের উত্তর তৈরি হচ্ছে...`);
     userPrompt = "";
   } else if (userPrompt.startsWith(REPLY_PROMPT_KEY)) {
-    /* ... (অপরিবর্তিত) ... */ specialPromptInstruction = `[সিস্টেম নোট: persona.txt-তে "রিপ্লাই করে বলো" কৌশলের নির্দেশনা অনুযায়ী একটি মিষ্টি, বাচ্চার মতো আবদারের বার্তা তৈরি করো।]`;
+    /* ... (অপরিবর্তিত) ... */ specialPromptInstruction = `[সিস্টেম নোট: persona.txt এর চরিত্র ও নিয়মাবলি কঠোরভাবে অনুসরণ করে ব্যবহারকারীর কাছ থেকে একটি রিপ্লাই চাওয়ার মেসেজ তৈরি করো।]`;
     console.log(`[Gemini Special] রিপ্লাই চাওয়ার বার্তা তৈরি হচ্ছে...`);
     userPrompt = "";
   } else if (userPrompt.startsWith(BAD_WORD_PROMPT_KEY)) {
@@ -145,8 +145,8 @@ async function getShizukaReply(threadID, userPrompt, senderName = null) {
       console.log(
         `[Gemini Teach] Found taught answer for "${userPrompt.substring(
           0,
-          30
-        )}...". Returning immediately.`
+          30,
+        )}...". Returning immediately.`,
       );
       console.log(`--- [Gemini Call End - Thread: ${threadID} (Teach)] ---`);
       return taughtAnswer + " 😊";
@@ -170,28 +170,26 @@ async function getShizukaReply(threadID, userPrompt, senderName = null) {
     fullPromptForAI = `${timeContextNote}\n${specialPromptInstruction}`;
     console.log("[Gemini Debug] Using Special Prompt Instruction for AI.");
   } else if (isScheduledTask) {
-    systemInstruction = `[সিস্টেম নোট: এটি একটি স্বয়ংক্রিয় বার্তা যা গ্রুপের **সবার উদ্দেশ্যে** বলা হচ্ছে। উত্তরে অবশ্যই 'আপনারা', 'আপনাদের', 'সবাই' ইত্যাদি **বহুবচন** ব্যবহার করবে। **কোনো নির্দিষ্ট লিঙ্গবাচক সম্বোধন (ভাইয়া/আপু) ব্যবহার করবে না**। সিজুকার মূল ব্যক্তিত্ব (৭ বছর বয়সী, মিষ্টি, প্রচুর ইমোজি ও স্টাইল) বজায় রাখবে। এই নোটটি ব্যবহারকারীকে দেখাবে না।]`;
+    systemInstruction = `[সিস্টেম নোট: এটি একটি স্বয়ংক্রিয় বার্তা যা গ্রুপের **সবার উদ্দেশ্যে** বলা হচ্ছে। উত্তরে অবশ্যই 'আপনারা', 'আপনাদের', 'সবাই' ইত্যাদি **বহুবচন** ব্যবহার করবে। **কোনো নির্দিষ্ট লিঙ্গবাচক সম্বোধন (ভাইয়া/আপু) ব্যবহার করবে না**। STRICTLY follow the personality and behavioral rules defined in the external persona.txt file. এই নোটটি ব্যবহারকারীকে দেখাবে না।]`;
     fullPromptForAI = `${timeContextNote}\n${systemInstruction}\n\nমূল টপিক: "${userPrompt}"`;
     console.log("[Gemini Debug] Using Scheduled Task Instruction for AI.");
   } else if (senderName) {
-    systemInstruction = `[সিস্টেম নোট: ব্যবহারকারীর নাম "${senderName}"। **প্রথমে** তার প্রশ্নটি ("${userPrompt}") বিশ্লেষণ করে দেখো এতে কোনো **গালিগালাজ, অপমান বা অশ্লীল ইঙ্গিত** আছে কিনা। * **যদি থাকে:** সরাসরি persona.txt-এর **"রোস্টিং (আত্মরক্ষা)"** নির্দেশনা অনুযায়ী একটি বুদ্ধিদীপ্ত, স্যাভেজ কিন্তু ভদ্র উত্তর দাও (উদাহরণ কপি না করে)। * **যদি না থাকে:** তাহলে স্বাভাবিকভাবে লিঙ্গ অনুমান করে ('আপু'/'ভাইয়া') তার প্রশ্নের উত্তর দাও। সর্বদা সিজুকার মূল ব্যক্তিত্ব (মিষ্টি, ইমোজি, স্টাইল, AI পরিচয় গোপন) বজায় রাখবে। সময় জ্ঞান (${timeContextNote}) ব্যবহার করতে পারো। এই নোটটি ব্যবহারকারীকে দেখাবে না।]`;
-    fullPromptForAI = systemInstruction; // For roasting check, AI only gets instructions first
+    systemInstruction = `[সিস্টেম নোট: ব্যবহারকারীর নাম "${senderName}"। STRICTLY follow the personality and behavioral rules defined in the external persona.txt file. এই নোটটি ব্যবহারকারীকে দেখাবে না।]`;
+    fullPromptForAI = `${timeContextNote}\n${systemInstruction}\n\nকাজ/প্রশ্ন: "${userPrompt}"`;
     finalUserPromptForHistory = userPrompt; // Keep original prompt separately for history
-    console.log(
-      "[Gemini Debug] Using User-Specific Instruction (with potential roasting) for AI."
-    );
+    console.log("[Gemini Debug] Using User-Specific Instruction for AI.");
   } else {
     // General case (likely admin in inbox or other scenarios without sender name)
     systemInstruction =
-      "[সিস্টেম নোট: সিজুকার মূল ব্যক্তিত্ব (মিষ্টি, ইমোজি, স্টাইল) বজায় রেখে উত্তর দাও। সম্ভব হলে 'ভাইয়া' সম্বোধন ব্যবহার করো।]";
+      "[সিস্টেম নোট: STRICTLY follow the personality and behavioral rules defined in the external persona.txt file.]";
     fullPromptForAI = `${timeContextNote}\n${systemInstruction}\n\nকাজ/প্রশ্ন: "${userPrompt}"`;
     console.log("[Gemini Debug] Using General Instruction for AI.");
   }
   console.log(
     `[Gemini Debug] Final Prompt For AI (first 100 chars): "${fullPromptForAI.substring(
       0,
-      100
-    )}..."`
+      100,
+    )}..."`,
   );
 
   // ঙ. পুরনো ইতিহাস লোড করা
@@ -206,7 +204,7 @@ async function getShizukaReply(threadID, userPrompt, senderName = null) {
     },
   ];
   console.log(
-    `[Gemini Debug] Loaded history length: ${currentHistory.length} parts.`
+    `[Gemini Debug] Loaded history length: ${currentHistory.length} parts.`,
   );
 
   // চ. নতুন মেসেজ ইতিহাসে যোগ করা (Use original prompt for history)
@@ -219,7 +217,7 @@ async function getShizukaReply(threadID, userPrompt, senderName = null) {
     parts: [{ text: userMessageForHistory }],
   });
   console.log(
-    `[Gemini Debug] Added user message to history. New length: ${currentHistory.length}`
+    `[Gemini Debug] Added user message to history. New length: ${currentHistory.length}`,
   );
 
   // ছ. ইতিহাস ছাঁটাই
@@ -232,7 +230,7 @@ async function getShizukaReply(threadID, userPrompt, senderName = null) {
       ...currentHistory.slice(-(HISTORY_MAX_LENGTH * 2 - 2)), // Keep last N pairs
     ];
     console.log(
-      `[Gemini Debug] Pruned history from ${oldLength} to ${currentHistory.length} parts.`
+      `[Gemini Debug] Pruned history from ${oldLength} to ${currentHistory.length} parts.`,
     );
   }
 
@@ -258,10 +256,12 @@ async function getShizukaReply(threadID, userPrompt, senderName = null) {
     const model = genAI.getGenerativeModel({
       model: "models/gemma-3-27b-it",
       generationConfig: {
-        temperature: 0.6, // সৃজনশীলতা এবং ফোকাস ব্যালেন্স করে (বেশি হলে আবোলতাবোল বকবে)
-        topP: 0.9, // লজিক্যাল শব্দ বেছে নিতে সাহায্য করে
-        topK: 40, // সেরা ৪০টি শব্দের বাইরে যাবে না
-        maxOutputTokens: 150, // উত্তর অতিরিক্ত বড় হওয়া ঠেকাবে
+        temperature: 0.6,
+        topP: 0.9,
+        topK: 40,
+        maxOutputTokens: 150,
+        frequencyPenalty: 1.0,
+        presencePenalty: 0.5,
       },
     });
     // ========================================================
@@ -337,7 +337,7 @@ async function getShizukaReply(threadID, userPrompt, senderName = null) {
             ? GEMINI_API_KEYS.length - 1
             : currentApiKeyIndex - 1
           : "N/A"
-      }`
+      }`,
     );
     // Log the full error object for more details
     console.error("[Gemini Error Details]:", error);
@@ -351,7 +351,7 @@ async function getShizukaReply(threadID, userPrompt, senderName = null) {
       error.details || (error.response ? error.response.data : null); // Look deeper for details
 
     console.log(
-      `[Gemini Error Debug] Message: "${errorMessage}", Status: ${errorStatus}`
+      `[Gemini Error Debug] Message: "${errorMessage}", Status: ${errorStatus}`,
     );
     // console.log("[Gemini Error Debug] Details:", JSON.stringify(errorDetails, null, 2)); // Uncomment for very detailed error data
 
@@ -367,7 +367,7 @@ async function getShizukaReply(threadID, userPrompt, senderName = null) {
               ? GEMINI_API_KEYS.length - 1
               : currentApiKeyIndex - 1
             : "N/A"
-        } might be invalid or blocked! Please check config.json.`
+        } might be invalid or blocked! Please check config.json.`,
       );
       specificErrorMessage =
         "একটি API Key তে সমস্যা হয়েছে। অ্যাডমিন শীঘ্রই ঠিক করবেন।";
@@ -385,7 +385,7 @@ async function getShizukaReply(threadID, userPrompt, senderName = null) {
               ? GEMINI_API_KEYS.length - 1
               : currentApiKeyIndex - 1
             : "N/A"
-        }.`
+        }.`,
       );
     } else if (
       errorMessage.includes("SAFETY") ||
@@ -405,14 +405,22 @@ async function getShizukaReply(threadID, userPrompt, senderName = null) {
     // Add more specific checks based on observed errors if needed
 
     console.log(
-      `[Gemini Debug] Throwing error with message: "${specificErrorMessage}"`
+      `[Gemini Debug] Throwing error with message: "${specificErrorMessage}"`,
     );
     console.log(`--- [Gemini Call End - Thread: ${threadID} (Error)] ---`);
     throw new Error(specificErrorMessage); // Throw the user-friendly message
   }
 }
 
+// === ৫.৫. চ্যাট হিস্টরি ক্লিয়ার ফাংশন ===
+async function clearChatHistory(threadID) {
+  const historyKey = String(threadID);
+  conversationHistory.delete(historyKey);
+  console.log(`[Gemini Debug] Cleared chat history for Thread: ${historyKey}`);
+}
+
 // === ৬. ফাংশন এক্সপোর্ট ===
 module.exports = {
   getShizukaReply,
+  clearChatHistory,
 };
