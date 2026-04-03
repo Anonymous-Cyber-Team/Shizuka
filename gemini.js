@@ -260,8 +260,6 @@ async function getShizukaReply(threadID, userPrompt, senderName = null) {
         topP: 0.9,
         topK: 40,
         maxOutputTokens: 150,
-        frequencyPenalty: 1.0,
-        presencePenalty: 0.5,
       },
     });
     // ========================================================
