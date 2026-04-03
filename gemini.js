@@ -10,6 +10,29 @@ const fs = require("fs-extra");
 const path = require("path");
 const teachManager = require("./utils/teachManager");
 
+// === Helper Function for Response Sanitization ===
+function sanitizeAIResponse(text) {
+  if (!text) return "";
+  // Step 1: Split by Bengali and English sentence terminators
+  let segments = text.split(/(?<=[।?!.])/);
+  let uniqueSegments = [];
+  let seen = new Set();
+
+  for (let seg of segments) {
+    let trimmed = seg.trim();
+    if (trimmed && !seen.has(trimmed)) {
+      seen.add(trimmed);
+      uniqueSegments.push(trimmed);
+    }
+  }
+
+  let cleanedText = uniqueSegments.join(" ").trim();
+
+  // Step 2: Fallback for repetitive words without punctuation (e.g., "হুম হুম হুম")
+  // Limit to max 200 characters to prevent huge spam walls
+  return cleanedText.substring(0, 200);
+}
+
 // === ১. কনফিগারেশন লোড ===
 let config;
 let GEMINI_API_KEYS = []; // Initialize as empty array
@@ -160,6 +183,27 @@ async function getShizukaReply(threadID, userPrompt, senderName = null) {
   const { time, date, day, dayPart } = getCurrentTimeInfo();
   const timeContextNote = `[সিস্টেম নোট (সর্বদা প্রযোজ্য): বর্তমান সময় ${time}, ${dayPart} বেলা। আজকের তারিখ ${date}, ${day}। এই সময়জ্ঞান তোমার উত্তরে প্রাসঙ্গিকভাবে ব্যবহার করতে পারো। এই নোটটি ব্যবহারকারীকে দেখাবে না।]`;
 
+  // --- [Smart Event Injection: সিজুকার মেমরিতে ইভেন্ট যুক্ত করা] ---
+  let eventContextNote = "";
+  try {
+    const fs = require("fs");
+    const path = require("path");
+    const eventsPath = path.join(__dirname, "upcoming_events.json");
+
+    if (fs.existsSync(eventsPath)) {
+      const eventsData = JSON.parse(fs.readFileSync(eventsPath, "utf8"));
+      if (eventsData.length > 0) {
+        const eventNames = eventsData
+          .map((e) => `${e.date} তারিখে ${e.name} (${e.type})`)
+          .join(", ");
+        eventContextNote = `[সিস্টেম নোট: আগামী ৭ দিনের ইভেন্ট লিস্ট: ${eventNames}। কেউ ইভেন্ট, ছুটি বা উৎসব নিয়ে কথা বললে এই তথ্য ব্যবহার করে স্বাভাবিকভাবে উত্তর দেবে। ইসলামিক ইভেন্ট হলে একটু বেশি সুন্দর করে উইশ করবে। নিজে থেকে গায়ে পড়ে লিস্ট বলবে না।]`;
+      }
+    }
+  } catch (e) {
+    console.error("[Gemini Event Context Error]:", e.message);
+  }
+  // -------------------------------------------------------------
+
   // ঘ. স্বয়ংক্রিয়/ব্যক্তিগত বার্তা নির্ধারণ ও চূড়ান্ত প্রম্পট তৈরি
   const isScheduledTask = threadID.startsWith("SCHEDULED_TASK_");
   let finalUserPromptForHistory = userPrompt; // Save original prompt for history if needed
@@ -167,22 +211,22 @@ async function getShizukaReply(threadID, userPrompt, senderName = null) {
   let fullPromptForAI = ""; // This will hold the final text sent to the API
 
   if (specialPromptInstruction) {
-    fullPromptForAI = `${timeContextNote}\n${specialPromptInstruction}`;
+    fullPromptForAI = `${timeContextNote}\n${eventContextNote}\n${specialPromptInstruction}`;
     console.log("[Gemini Debug] Using Special Prompt Instruction for AI.");
   } else if (isScheduledTask) {
     systemInstruction = `[সিস্টেম নোট: এটি একটি স্বয়ংক্রিয় বার্তা যা গ্রুপের **সবার উদ্দেশ্যে** বলা হচ্ছে। উত্তরে অবশ্যই 'আপনারা', 'আপনাদের', 'সবাই' ইত্যাদি **বহুবচন** ব্যবহার করবে। **কোনো নির্দিষ্ট লিঙ্গবাচক সম্বোধন (ভাইয়া/আপু) ব্যবহার করবে না**। STRICTLY follow the personality and behavioral rules defined in the external persona.txt file. এই নোটটি ব্যবহারকারীকে দেখাবে না।]`;
-    fullPromptForAI = `${timeContextNote}\n${systemInstruction}\n\nমূল টপিক: "${userPrompt}"`;
+    fullPromptForAI = `${timeContextNote}\n${eventContextNote}\n${systemInstruction}\n\nমূল টপিক: "${userPrompt}"`;
     console.log("[Gemini Debug] Using Scheduled Task Instruction for AI.");
   } else if (senderName) {
     systemInstruction = `[সিস্টেম নোট: ব্যবহারকারীর নাম "${senderName}"। STRICTLY follow the personality and behavioral rules defined in the external persona.txt file. এই নোটটি ব্যবহারকারীকে দেখাবে না।]`;
-    fullPromptForAI = `${timeContextNote}\n${systemInstruction}\n\nকাজ/প্রশ্ন: "${userPrompt}"`;
+    fullPromptForAI = `${timeContextNote}\n${eventContextNote}\n${systemInstruction}\n\nকাজ/প্রশ্ন: "${userPrompt}"`;
     finalUserPromptForHistory = userPrompt; // Keep original prompt separately for history
     console.log("[Gemini Debug] Using User-Specific Instruction for AI.");
   } else {
     // General case (likely admin in inbox or other scenarios without sender name)
     systemInstruction =
       "[সিস্টেম নোট: STRICTLY follow the personality and behavioral rules defined in the external persona.txt file.]";
-    fullPromptForAI = `${timeContextNote}\n${systemInstruction}\n\nকাজ/প্রশ্ন: "${userPrompt}"`;
+    fullPromptForAI = `${timeContextNote}\n${eventContextNote}\n${systemInstruction}\n\nকাজ/প্রশ্ন: "${userPrompt}"`;
     console.log("[Gemini Debug] Using General Instruction for AI.");
   }
   console.log(
@@ -259,7 +303,7 @@ async function getShizukaReply(threadID, userPrompt, senderName = null) {
         temperature: 0.6,
         topP: 0.9,
         topK: 40,
-        maxOutputTokens: 150,
+        maxOutputTokens: 60,
       },
     });
     // ========================================================
@@ -288,6 +332,12 @@ async function getShizukaReply(threadID, userPrompt, senderName = null) {
         0,
         100,
       )}..."`,
+    );
+
+    // Apply post-processing filter to prevent repetition
+    botReply = sanitizeAIResponse(botReply);
+    console.log(
+      `[Gemini Debug] Sanitized response: "${botReply.substring(0, 100)}..."`,
     );
 
     if (!botReply) {
