@@ -1,35 +1,33 @@
 const { clearChatHistory } = require("../gemini.js");
 
 module.exports = {
-  // কমান্ডের কনফিগারেশন (তোমার ping.js এর মতো)
   config: {
-    name: "clear", // কমান্ডের মূল নাম
-    aliases: ["reset", "forget", "c"], // কমান্ডের অন্যান্য নাম
-    description: "বটের মেমরি বা চ্যাট হিস্ট্রি সম্পূর্ণ মুছে ফেলে।", // কমান্ডের বর্ণনা
-    permission: 0, // 0 = সবাই ব্যবহার করতে পারবে
-    cooldown: 5, // ৫ সেকেন্ডের কুলডাউন
-    usage: "/clear", // কমান্ডের ব্যবহার নির্দেশিকা
+    name: "clear",
+    aliases: ["reset", "forget", "c"],
+    description: "বটের মেমরি বা চ্যাট হিস্ট্রি সম্পূর্ণ মুছে ফেলে।",
+    permission: 0,
+    cooldown: 5,
+    usage: "/clear",
   },
 
-  // কমান্ডটি রান করার মূল ফাংশন
   run: async function ({ api, message }) {
     try {
-      // তোমার ফ্রেমওয়ার্ক অনুযায়ী message.threadID ব্যবহার করা হচ্ছে
       const threadID = message.threadID;
-
-      // gemini.js থেকে হিস্ট্রি ক্লিয়ার করার ফাংশন কল করা হচ্ছে
       const success = await clearChatHistory(threadID);
 
+      // ম্যাজিক ফিক্স: () => {} অ্যাড করা হয়েছে
       if (success) {
         api.sendMessage(
           "✅ আমার মেমরি সম্পূর্ণ রিস্টার্ট করা হয়েছে! আগের সব কথা ভুলে গেছি। নতুন করে শুরু করুন।",
           threadID,
+          () => {},
           message.messageID,
         );
       } else {
         api.sendMessage(
           "⚠️ হিস্ট্রি ক্লিয়ার করা হয়েছে (বা আগে থেকেই খালি ছিল)।",
           threadID,
+          () => {},
           message.messageID,
         );
       }
@@ -38,6 +36,7 @@ module.exports = {
       api.sendMessage(
         "❌ মেমরি ক্লিয়ার করতে সমস্যা হয়েছে! সার্ভার লগ চেক করুন।",
         message.threadID,
+        () => {},
         message.messageID,
       );
     }

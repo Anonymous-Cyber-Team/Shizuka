@@ -20,6 +20,7 @@ module.exports = {
         return api.sendMessage(
           "⚠️ বর্তমানে আগামী ৭ দিনের জন্য কোনো ইভেন্ট বা ছুটির ডেটা আমার কাছে নেই।",
           message.threadID,
+          () => {},
           message.messageID,
         );
       }
@@ -30,6 +31,7 @@ module.exports = {
         return api.sendMessage(
           "📅 আগামী ৭ দিনে বিশেষ কোনো ইভেন্ট বা ছুটির দিন নেই।",
           message.threadID,
+          () => {},
           message.messageID,
         );
       }
@@ -37,21 +39,19 @@ module.exports = {
       let replyMsg = "📅 **আগামী ৭ দিনের ইভেন্ট ও ছুটির তালিকা:**\n\n";
 
       eventsData.forEach((event, index) => {
-        // তারিখ ফরম্যাট করা (যেমন: 05 April 2026)
         const formattedDate = moment(event.date).format("DD MMMM YYYY");
-
-        // ইমোজি সেট করা (ইসলামিক হলে চাঁদ, নাহলে ক্যালেন্ডার)
         const emoji = event.type === "Islamic" ? "🌙" : "✨";
-
         replyMsg += `${index + 1}. ${emoji} **${event.name}**\n   🗓️ তারিখ: ${formattedDate}\n\n`;
       });
 
-      api.sendMessage(replyMsg, message.threadID, message.messageID);
+      // ম্যাজিক ফিক্স: () => {} অ্যাড করা হয়েছে
+      api.sendMessage(replyMsg, message.threadID, () => {}, message.messageID);
     } catch (error) {
       console.error("[Events Command Error]:", error);
       api.sendMessage(
         "❌ ইভেন্ট লিস্ট লোড করতে সমস্যা হয়েছে!",
         message.threadID,
+        () => {},
         message.messageID,
       );
     }
