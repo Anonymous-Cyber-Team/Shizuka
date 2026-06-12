@@ -1,24 +1,34 @@
-# Node modules folder
+# Node modules & Logs
 /node_modules
-
-# Shizuka Backup Folder
-/shizuka_backup
-.env
-
-# Sensitive configuration files
-appstate.json
-config.json
-groups.json
-
-# Cache folder
-/cache/
-
-# Log files (optional)
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# OS generated files (optional)
+# Sensitive Configuration & Credentials
+.env
+appstate.json
+config.json
+groups.json
+api.txt
+
+# Database & State files
+/freellmapi/server/data/*.db
+last_fetch_date.txt
+teachData.json
+
+# Backup Folders & Cache
+/shizuka_backup
+/cache/
+
+# OS generated files
 .DS_Store
 Thumbs.db
+
+# Misc
+.env.local
+.env.development.local
+
+#Extra
+supported_gemini_models_list.txt
+project_architecture_overview.txt

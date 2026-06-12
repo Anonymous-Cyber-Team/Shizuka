@@ -1,32 +1,47 @@
 [
   {
-    "date": "2026-04-01",
-    "name": "April Fools' Day",
-    "type": "Cultural"
+    "date": "2026-06-12",
+    "name": "World Day Against Child Labour",
+    "type": "International"
   },
   {
-    "date": "2026-04-02",
-    "name": "Good Friday",
-    "type": "Religious"
+    "date": "2026-06-13",
+    "name": "International Albinism Awareness Day",
+    "type": "International"
   },
   {
-    "date": "2026-04-04",
-    "name": "Easter Sunday",
-    "type": "Religious"
+    "date": "2026-06-14",
+    "name": "World Blood Donor Day",
+    "type": "International"
   },
   {
-    "date": "2026-04-05",
-    "name": "Holi (India/Nepal - may be observed by Bangladeshi diaspora)",
-    "type": "Religious"
+    "date": "2026-06-15",
+    "name": "World Elder Abuse Awareness Day",
+    "type": "International"
   },
   {
-    "date": "2026-04-05",
-    "name": "Holi (India/Nepal - may have celebrations in Bangladeshi communities)",
-    "type": "Religious/Cultural"
+    "date": "2026-06-16",
+    "name": "Birth of Khas Muhammad ash-Shirwani ق",
+    "type": "Islamic"
   },
   {
-    "date": "2026-04-07",
-    "name": "World Health Day",
+    "date": "2026-06-16",
+    "name": "Day of the African Child",
+    "type": "International"
+  },
+  {
+    "date": "2026-06-16",
+    "name": "International Day of Family Remittances",
+    "type": "International"
+  },
+  {
+    "date": "2026-06-17",
+    "name": "World Day to Combat Desertification and Drought",
+    "type": "International"
+  },
+  {
+    "date": "2026-06-18",
+    "name": "Sustainable Gastronomy Day",
     "type": "International"
   }
 ]

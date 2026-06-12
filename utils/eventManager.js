@@ -17,10 +17,10 @@ try {
   config = JSON.parse(
     fs.readFileSync(path.join(__dirname, "..", "config.json"), "utf8"),
   );
-  GEMINI_API_KEYS = config.GEMINI_API_KEYS || [];
+  GEMINI_API_KEYS = config.GEMINI_API_KEYS || config.FREE_LLM_API_KEYS || [];
   if (!Array.isArray(GEMINI_API_KEYS) || GEMINI_API_KEYS.length === 0) {
     throw new Error(
-      "config.json-এ 'GEMINI_API_KEYS' অ্যারে সঠিকভাবে সেট করা নেই।",
+      "config.json-এ 'GEMINI_API_KEYS' বা 'FREE_LLM_API_KEYS' অ্যারে সঠিকভাবে সেট করা নেই।",
     );
   }
 } catch (error) {
@@ -124,7 +124,7 @@ async function fetchAndSaveUpcomingEvents() {
 
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemma-3-27b-it" });
+      const model = genAI.getGenerativeModel({ model: "models/gemini-2.5-flash" });
       const result = await model.generateContent(prompt);
       const responseText = result.response.text();
       const cleanedResponse = responseText

@@ -249,6 +249,8 @@ setInterval(() => {
   initializeScheduler(api, config);
   setInterval(clearOldCache, 5 * 60 * 1000);
 
+
+
   // --- মেসেজ পাঠানোর Promise Wrapper (অপরিবর্তিত) ---
   function sendMessagePromise(body, threadID, replyToMessageID = null) {
     return new Promise((resolve, reject) => {
@@ -344,37 +346,53 @@ setInterval(() => {
         textToSend = textToSend.replace(sepEmojiMatch[0], "").trim();
       }
 
-      // --- Sending logic with logging ---
+      // --- Sending logic with logging & Human-Splitting ---
       if (textToSend) {
-        console.log(
-          `[Queue Debug - ${threadID}] Attempting to send reply (replying to ${originalMessageID}).`,
-        );
-        try {
-          // ============ [BUG FIX] ============
-          // await api.sendMessage(textToSend, threadID, originalMessageID); // <-- BUG: Awaiting non-promise
-          await sendMessagePromise(textToSend, threadID, originalMessageID); // <-- FIX: Awaiting promise wrapper
-          // ===================================
-          console.log(`[Queue Debug - ${threadID}] Reply sent successfully.`);
-        } catch (replyError) {
-          console.warn(
-            `[Queue Warn - ${threadID}] Failed to reply to ${originalMessageID} (${
-              replyError.errorSummary || replyError
-            }). Attempting fallback send.`,
-          );
+        if (textToSend.includes('|||')) {
+          const messageParts = textToSend.split('|||').map(m => m.trim()).filter(Boolean);
+
+          for (let i = 0; i < messageParts.length; i++) {
+            const part = messageParts[i];
+            const isFirst = (i === 0);
+            
+            if (!isFirst) {
+              // Apply human-like delay for subsequent messages (1.5s to 2.5s)
+              const delay = 1500 + Math.random() * 1000;
+              await new Promise(res => setTimeout(res, delay));
+            }
+
+            console.log(`[Queue Debug - ${threadID}] Attempting to send part ${i + 1}/${messageParts.length}.`);
+            
+            try {
+              if (isFirst) {
+                await sendMessagePromise(part, threadID, originalMessageID);
+              } else {
+                await sendMessagePromise(part, threadID);
+              }
+              console.log(`[Queue Debug - ${threadID}] Part ${i + 1} sent successfully.`);
+            } catch (replyError) {
+              console.warn(`[Queue Warn - ${threadID}] Failed to send part ${i + 1} (${replyError.errorSummary || replyError}). Attempting fallback send.`);
+              try {
+                await sendMessagePromise(part, threadID);
+                console.log(`[Queue Debug - ${threadID}] Fallback send successful for part ${i + 1}.`);
+              } catch (sendError) {
+                console.error(`[Queue Error - ${threadID}] Fallback send failed for part ${i + 1}:`, sendError.errorSummary || sendError);
+              }
+            }
+          }
+        } else {
+          console.log(`[Queue Debug - ${threadID}] Attempting to send reply (replying to ${originalMessageID}).`);
           try {
-            // ============ [BUG FIX] ============
-            // await api.sendMessage(textToSend, threadID); // <-- BUG: Awaiting non-promise
-            await sendMessagePromise(textToSend, threadID); // <-- FIX: Awaiting promise wrapper
-            // ===================================
-            console.log(
-              `[Queue Debug - ${threadID}] Fallback send successful.`,
-            );
-          } catch (sendError) {
-            console.error(
-              `[Queue Error - ${threadID}] Fallback send also failed:`,
-              sendError.errorSummary || sendError,
-            );
-            // Don't throw here, let finally handle queue progression
+            await sendMessagePromise(textToSend, threadID, originalMessageID);
+            console.log(`[Queue Debug - ${threadID}] Reply sent successfully.`);
+          } catch (replyError) {
+            console.warn(`[Queue Warn - ${threadID}] Failed to reply to ${originalMessageID} (${replyError.errorSummary || replyError}). Attempting fallback send.`);
+            try {
+              await sendMessagePromise(textToSend, threadID);
+              console.log(`[Queue Debug - ${threadID}] Fallback send successful.`);
+            } catch (sendError) {
+              console.error(`[Queue Error - ${threadID}] Fallback send failed:`, sendError.errorSummary || sendError);
+            }
           }
         }
       } else {
